@@ -4,10 +4,10 @@ import java.util.*;
 
 public class ExpressionFinder {
     private int numberOfRecursions;
-    private final Map<String, Map<Integer, String>> checkedSubsetToExpressionMap;
+    private final Map<String, Map<Integer, String>> subsetValueToExpressionMap;
 
     public ExpressionFinder() {
-        checkedSubsetToExpressionMap = new HashMap<>();
+        subsetValueToExpressionMap = new HashMap<>();
     }
 
     public SearchResult<String> find(Integer... elements) {
@@ -16,7 +16,7 @@ public class ExpressionFinder {
         if (elements.length <= 1)
             return new MissingResult<>();
 
-        checkedSubsetToExpressionMap.clear();
+        subsetValueToExpressionMap.clear();
 
         List<Integer> list = Arrays.asList(elements);
         Integer target = list.get(0);
@@ -37,31 +37,30 @@ public class ExpressionFinder {
         return searchSetForExpression(elements, target, expression, setKey);
     }
 
-    private SearchResult<String> matchHeadWithTarget(List<Integer> integers, Integer target, String expression) {
-        Integer head = integers.get(0);
+    private SearchResult<String> matchHeadWithTarget(List<Integer> elements, Integer target, String expression) {
+        Integer head = elements.get(0);
         if (Objects.equals(target, head)) {
             return new FoundResult<>(expression + " = " + head.toString());
         }
 
-        addSingleIntegerExpression(head, integers.toString());
+        addSingleIntegerExpression(head, elements.toString());
         return new MissingResult<>();
     }
 
-    private SearchResult<String> searchSetForExpression(List<Integer> integers, Integer target, String expression, String setKey) {
-        checkedSubsetToExpressionMap.put(setKey, new HashMap<Integer, String>());
+    private SearchResult<String> searchSetForExpression(List<Integer> elements, Integer target, String expression, String setKey) {
+        subsetValueToExpressionMap.put(setKey, new HashMap<Integer, String>());
 
-        Integer head = integers.get(0);
-        List<Integer> tail = integers.subList(1, integers.size());
+        Integer head = elements.get(0);
+        List<Integer> tail = elements.subList(1, elements.size());
         SearchResult<String> searchResult = searchTailToMatchTarget(tail, head, target, expression);
-        if (searchResult.exists())
-            return searchResult;
+        if (!searchResult.exists())
+            formSupersetWithHeadAndTail(head, tail.toString(), setKey);
 
-        formSupersetWithHeadAndTail(head, tail.toString(), setKey);
-        return new MissingResult<>();
+        return searchResult;
     }
 
     private boolean isSetSearchedForExpression(String key) {
-        return checkedSubsetToExpressionMap.containsKey(key);
+        return subsetValueToExpressionMap.containsKey(key);
     }
 
     private SearchResult<String> searchTailToMatchTarget(List<Integer> tail,
@@ -72,7 +71,7 @@ public class ExpressionFinder {
         if (!searchResult.exists()) {
             searchResult = find(tail, target - head, expression + " - " + headString);
             if (!searchResult.exists()) {
-                searchResult = find(tail, -target + head, " - " + swapOperators(expression) + " + " + headString);
+                searchResult = find(tail, head - target, headString + " - " + swapOperators(expression));
             }
         }
 
@@ -86,30 +85,28 @@ public class ExpressionFinder {
     private void formSupersetWithHeadAndTail(Integer head,
                                              String tailKey,
                                              String supersetKey) {
-        Map<Integer, String> subsetMap = checkedSubsetToExpressionMap.get(tailKey);
-        Map<Integer, String> supersetMap = checkedSubsetToExpressionMap.get(supersetKey);
+        Map<Integer, String> subsetMap = subsetValueToExpressionMap.get(tailKey);
+        Map<Integer, String> supersetMap = subsetValueToExpressionMap.get(supersetKey);
 
         for (Integer result : subsetMap.keySet()) {
-            supersetMap.put(result + head, subsetMap.get(result) + " + " + head);
+            supersetMap.put(result + head, head + " + " + subsetMap.get(result));
             supersetMap.put(result - head, subsetMap.get(result) + " - " + head);
         }
     }
 
     private SearchResult<String> matchTargetWithCachedCombinationsOfElements(Integer target, String expression, String key) {
-        Map<Integer, String> resultExpressionMap = checkedSubsetToExpressionMap.get(key);
-        for (Integer result : resultExpressionMap.keySet()) {
-            if (Objects.equals(result, target)) {
-                return new FoundResult<>(expression + " = " + resultExpressionMap.get(result));
-            }
+        Map<Integer, String> resultExpressionMap = subsetValueToExpressionMap.get(key);
+        if (resultExpressionMap.containsKey(target)) {
+            return new FoundResult<>(expression + " = " + resultExpressionMap.get(target));
         }
         return new MissingResult<>();
     }
 
     private void addSingleIntegerExpression(Integer currentInteger, String key) {
-        if (!checkedSubsetToExpressionMap.containsKey(key)) {
-            checkedSubsetToExpressionMap.put(key, new HashMap<Integer, String>());
+        if (!subsetValueToExpressionMap.containsKey(key)) {
+            subsetValueToExpressionMap.put(key, new HashMap<Integer, String>());
         }
-        checkedSubsetToExpressionMap.get(key).put(currentInteger, currentInteger.toString());
+        subsetValueToExpressionMap.get(key).put(currentInteger, currentInteger.toString());
     }
 
     int getNumberOfRecursions() {
