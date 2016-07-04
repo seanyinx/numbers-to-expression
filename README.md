@@ -1,5 +1,6 @@
 #Find a expression for a sequence of numbers
-Input: a string of numbers separated with comma(,) for example: 7,9,4,2
+Input: a string of numbers separated with comma(,) for example: ```7,9,4,2```
+
 Use three operators below to make a correct expression
 - add (+)
 - minus (-)
